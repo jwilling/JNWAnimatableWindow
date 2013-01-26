@@ -59,15 +59,17 @@
 // Since this isn't wrapped in one of the convenience methods, we are responsible
 // for getting rid of the window when we are done.
 - (void)moveAround:(id)sender {
-	CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"transform"];
+	// Apply a perspective transform onto the layer.
+	CATransform3D transform = CATransform3DIdentity;
+	transform.m34 = -1.f / 700.f;
+	self.window.layer.transform = transform;
+	
+	// Do a barrel roll.
+	CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"transform.rotation.x"];
 	animation.duration = 3.f;
-	animation.autoreverses = YES;
-	
-	CATransform3D transform = CATransform3DMakeRotation(M_PI, 1.f, 0.f, 0.f);
-	transform.m34 = -1.f / 300.f;
-	
-	animation.toValue = [NSValue valueWithCATransform3D:transform];
-	
+	animation.toValue = @(2*M_PI);
+	animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+
 	// Set the delegate on the animation so we know when to remove the fake window.
 	animation.delegate = self;
 	[self.window.layer addAnimation:animation forKey:nil];
