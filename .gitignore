@@ -1,5 +1,6 @@
 # Xcode
-build/*
+.DS_Store
+build/
 *.pbxuser
 !default.pbxuser
 *.mode1v3
@@ -14,7 +15,4 @@ xcuserdata
 profile
 *.moved-aside
 DerivedData
-
-# Ignore externals also
-externals/
-Pods/
+.idea/
