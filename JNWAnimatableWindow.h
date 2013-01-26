@@ -22,29 +22,37 @@
 // Allows for an extremely flexible manipulation of a static representation of the window.
 //
 // Since it uses a visual representation of the window, the window cannot be interacted with
-// while a transform is applied.
+// while a transform is applied, nor is it automatically updated to reflect the window's state.
 @interface JNWAnimatableWindow : NSWindow
 
-// This layer can be transformed as much as desired. As soon as the property is first used,
-// an image representation of the current window's state will be grabbed and used for the layer.
+// This layer can be transformed as much as desired. As soon as the property is first used an image
+// representation of the current window's state will be grabbed and used for the layer's contents.
 //
-// The downside of using a static image is that it will not reflect the state of the window
-// if it changes. If the window needs to change content while still having a transformed state,
-// call -updateImageRepresentation to update the backing image.
+// Because it is a static image, it will not reflect the state of the window if it changes.
+// If the window needs to change content while still having a transformed state,
+// call `-updateImageRepresentation` to update the backing image.
 @property (nonatomic, assign, readonly) CALayer *layer;
 
-// Used to update the graphical representation of the window when a transform is applied.
+// Used to update the graphical representation of the window if the layer exists.
 - (void)updateImageRepresentation;
 
-// Destroys the layer and fake window.
+// Destroys the layer and fake window. Only nessesary for use if the layer is animated manually.
+// If the convenience methods are used below, calling this is not nessesary as it is done automatically.
 - (void)destroyTransformingWindow;
 
-// Keeps the real window hidden, and wraps an implicit transaction around the `animations` block. The layer of the window
-// can be safely animated during this time. The window is automatically destroyed after the animation is complete.
+// Order a window out with an animation. The `animations` block is wrapped in a `CATransaction`, so implicit
+// animations will be enabled. Pass in nil for the timing function to default to ease-in-out.
+//
+// The layer and the extra window will be destroyed automatically after the animation completes.
 - (void)orderOutWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timingFunction
-				  animations:(void (^)(CALayer *layer))animations;
+				  animations:(void (^)(CALayer *windowLayer))animations;
 
+// Make a window key and visible with an animation. The setup block will be performed with implicit animations
+// disabled, so it is an ideal time to set the initial state for your animation. The `animations` block is wrapped
+// in a `CATransaction`, so implicit animations will be enabled. Pass in nil for the timing function to default to ease-in-out.
+//
+// The layer and the extra window will be destroyed automatically after the animation completes.
 - (void)makeKeyAndOrderFrontWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timingFunction
-								   setup:(void (^)(CALayer *layer))setup animations:(void (^)(CALayer *layer))animations;
+								   setup:(void (^)(CALayer *windowLayer))setup animations:(void (^)(CALayer *layer))animations;
 
 @end

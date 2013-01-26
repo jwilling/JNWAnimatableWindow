@@ -189,7 +189,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 - (void)performAnimations:(void (^)(CALayer *layer))animations withDuration:(CFTimeInterval)duration timingFunction:(CAMediaTimingFunction *)timingFunction {
 	[CATransaction begin];
 	[CATransaction setAnimationDuration:duration];
-	[CATransaction setAnimationTimingFunction:timingFunction];
+	[CATransaction setAnimationTimingFunction:(timingFunction ?: [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut])];
 	[CATransaction setCompletionBlock:^{
 		JNWAnimatableWindowOpenTransactions--;
 		if (JNWAnimatableWindowOpenTransactions == 0) {
