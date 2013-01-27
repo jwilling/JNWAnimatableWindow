@@ -33,9 +33,6 @@
 // call `-updateImageRepresentation` to update the backing image.
 @property (nonatomic, assign, readonly) CALayer *layer;
 
-// Used to update the graphical representation of the window if the layer exists.
-- (void)updateImageRepresentation;
-
 // Destroys the layer and fake window. Only nessesary for use if the layer is animated manually.
 // If the convenience methods are used below, calling this is not nessesary as it is done automatically.
 - (void)destroyTransformingWindow;
