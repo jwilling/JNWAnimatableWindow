@@ -20,8 +20,14 @@
 #import "JNWAnimatableWindow.h"
 #import <QuartzCore/QuartzCore.h>
 
+// Since we're using completion blocks to determine when to kill the extra window, we need
+// a way to keep track of the outstanding number of transactions, so we keep increment and
+// decrement this to determine whether or not the completion block needs to be called.
 static NSUInteger JNWAnimatableWindowOpenTransactions = 0;
 
+// These are attempts at determining the default shadow settings on a normal window. These
+// aren't perfect, but since NSWindow actually uses CGS functions to set the window I am not
+// entirely sure there's a way I can get the exact information about shadow settings.
 static const CGFloat JNWAnimatableWindowShadowOpacity = 0.8f;
 static const CGSize JNWAnimatableWindowShadowOffset = (CGSize){ 0, -18 };
 static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
@@ -32,7 +38,8 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 
 @interface JNWAnimatableWindow() {
 	// When we want to move the window off-screen to take the screen shot, we want
-	// to make sure we aren't being constranied.
+	// to make sure we aren't being constranied. Although the documentation does not
+	// state that it constrains windows when moved using -setFrame:display:, such is the case.
 	BOOL _disableConstrainedWindow;
 }
 
@@ -50,7 +57,6 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	self.windowRepresentationLayer = [CALayer layer];
 	self.windowRepresentationLayer.contentsScale = self.backingScaleFactor;
 	
-	// Set some reasonable default shadows which are not guaranteed to be the same as OS.
 	self.windowRepresentationLayer.shadowColor = JNWAnimatableWindowShadowColor.CGColor;
 	self.windowRepresentationLayer.shadowOffset = JNWAnimatableWindowShadowOffset;
 	self.windowRepresentationLayer.shadowRadius = JNWAnimatableWindowShadowRadius;
@@ -80,7 +86,9 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 #pragma mark Getters
 
 - (CALayer *)layer {
+	// If the layer does not exist at this point, we create it and set it up.
 	[self setupIfNeeded];
+	
 	return self.windowRepresentationLayer;
 }
 
@@ -94,9 +102,6 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 
 - (void)setupIfNeededWithSetupBlock:(void(^)(CALayer *))setupBlock {
 	if (self.windowRepresentationLayer != nil) {
-		if (self.windowRepresentationLayer.animationKeys.count) {
-			[self.windowRepresentationLayer removeAllAnimations];
-		}
 		return;
 	}
 	
@@ -125,6 +130,10 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 			.origin = CGPointMake(CGRectGetWidth(allWindowsFrame) + 2*JNWAnimatableWindowShadowRadius, 0),
 			.size = originalWindowFrame.size
 		};
+		
+		// This is where things get nasty. Against what the documentation states, windows seem to be constrained
+		// to the screen, so we override `constrainFrameRect:toScreen:` to return the original frame, which allows
+		// us to put the window off-screen.
 		_disableConstrainedWindow = YES;
 		
 		self.alphaValue = 0.f;		
@@ -134,17 +143,27 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 		_disableConstrainedWindow = NO;
 	}
 	
+	// Begin a non-animated transaction to ensure that the layer's contents are set before we get rid of the real window.
 	[CATransaction begin];
 	[CATransaction setDisableActions:YES];
-
+	
+	// If we are ordering ourself in, we will be off-screen and will not be visible. If ordering out, we're already visible.
 	self.alphaValue = 1.f;
+	
+	// Grab the image representation of the window, without the shadows.
 	[self updateImageRepresentation];
 	
+	// The setup block is called when we are ordering in. We want this non-animated and done before the the fake window
+	// is shown, so we do in in the same transaction.
 	if (setupBlock != nil)
 		setupBlock(self.windowRepresentationLayer);
+	
 	[CATransaction commit];
 	
 	[self.fullScreenWindow makeKeyAndOrderFront:nil];
+	
+	// Effectively hide the original window. If we are ordering in, the window will become visible again once
+	// the fake window is destroyed.
 	self.alphaValue = 0.f;
 	
 	// If we moved the window offscreen to get the screenshot, we want to move back to the original frame
@@ -154,10 +173,9 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 }
 
 - (void)updateImageRepresentation {
-	CGImageRef capture = CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, (CGWindowID)self.windowNumber, kCGWindowImageBoundsIgnoreFraming);
-	NSImage *image = [[NSImage alloc] initWithCGImage:capture size:CGSizeMake(CGImageGetWidth(capture), CGImageGetHeight(capture))];
-	self.windowRepresentationLayer.contents = image;//(__bridge id)image;
-	CGImageRelease(capture);
+	CGImageRef image = CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, (CGWindowID)self.windowNumber, kCGWindowImageBoundsIgnoreFraming);
+	self.windowRepresentationLayer.contents = (__bridge id)image;
+	CGImageRelease(image);
 }
 
 
@@ -174,6 +192,8 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 
 - (void)orderOutWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timingFunction animations:(void (^)(CALayer *))animations {
 	[self setupIfNeeded];
+	
+	// The fake window is in the exact same position as the real one, so we can safely order ourself out.
 	[super orderOut:nil];
 	[self performAnimations:animations withDuration:duration timingFunction:timingFunction];
 }
@@ -181,8 +201,12 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 - (void)makeKeyAndOrderFrontWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timingFunction
 								   setup:(void (^)(CALayer *))setup animations:(void (^)(CALayer *))animations {
 	[self setupIfNeededWithSetupBlock:setup];
+	
+	// Avoid unnessesary layout passes if we're already visible when this method is called. This could take place if the window
+	// is still being animated out, but the user suddenly changes their mind and the window needs to come back on screen again.
 	if (!self.isVisible)
 		[super makeKeyAndOrderFront:nil];
+	
 	[self performAnimations:animations withDuration:duration timingFunction:timingFunction];
 }
 
@@ -192,6 +216,8 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	[CATransaction setAnimationTimingFunction:(timingFunction ?: [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut])];
 	[CATransaction setCompletionBlock:^{
 		JNWAnimatableWindowOpenTransactions--;
+		
+		// If there are zero pending operations remaining, we can safely assume that it is time for the window to be destroyed.
 		if (JNWAnimatableWindowOpenTransactions == 0) {
 			[self destroyTransformingWindow];
 		}
@@ -207,6 +233,8 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 
 #pragma mark Lifecycle
 
+// Called when the ordering methods are complete. If the layer is used
+// manually, this should be called when animations are complete.
 - (void)destroyTransformingWindow {	
 	self.alphaValue = 1.f;
 	
@@ -225,6 +253,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	self = [super initWithFrame:frameRect];
 	if (self == nil) return nil;
 	
+	// Make the content view a layer-hosting view, so we can safely add sublayers instead of subviews.
 	self.layer = [CALayer layer];
 	self.wantsLayer = YES;
 	self.layerContentsRedrawPolicy = NSViewLayerContentsRedrawNever;
