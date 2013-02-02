@@ -15,5 +15,6 @@
 
 - (IBAction)moveAround:(id)sender;
 - (IBAction)animateOut:(id)sender;
+- (IBAction)animateFrame:(id)sender;
 
 @end
