@@ -23,30 +23,32 @@
 		[self.window makeKeyAndOrderFront:nil];
 		return NO;
 	}
+	
+	//[self.window makeKeyAndOrderFrontWithSetup:^(CALayer *layer) {
+	[self.window makeKeyAndOrderFrontWithDuration:0.7 timing:nil setup:^(CALayer *layer) {
+		// Anything done in this setup block is performed without any animation.
+		// The layer will not be visible during this time so now is our chance to set initial
+		// values for opacity, transform, etc.
+		layer.transform = CATransform3DMakeTranslation(0.f, -50., 0.f);
+		layer.opacity = 0.f;
+	} animations:^(CALayer *layer) {
 		
-	[self.window makeKeyAndOrderFrontWithDuration:0.7
-										   timing:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]
-											setup:^(CALayer *layer) {
-												
-												// Anything done in this setup block is performed without any animation.
-												// The layer will not be visible during this time so now is our chance to set initial
-												// values for opacity, transform, etc.
-												layer.transform = CATransform3DMakeTranslation(0.f, -50., 0.f);
-												layer.opacity = 0.f;
-											} animations:^(CALayer *layer) {
-												
-												// Now we're actually animating. In order to make the transition as seamless as possible,
-												// we want to set the final values to their original states, so that when the fake window
-												// is removed there will be no discernible jump to that state.
-												layer.transform = CATransform3DIdentity;
-												layer.opacity = 1.f;
-											}];
+		// Now we're actually animating. In order to make the transition as seamless as possible,
+		// we want to set the final values to their original states, so that when the fake window
+		// is removed there will be no discernible jump to that state.
+		//
+		// To change the default timing and duration, just wrap the animations in an NSAnimationContext.
+			layer.transform = CATransform3DIdentity;
+			layer.opacity = 1.f;
+	}];
+	
 	return NO;
 }
 
 - (void)animateOut:(id)sender {
 	[self.window orderOutWithDuration:0.7 timing:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut] animations:^(CALayer *layer) {
 		// We can now basically whatever we want with this layer. Everything is already wrapped in a CATransaction so it is animated implicitly.
+		// To change the duration and other properties, just modify the current context. It will apply to the animation.
 		layer.transform = CATransform3DMakeTranslation(0.f, -50.f, 0.f);
 		layer.opacity = 0.f;
 	}];
@@ -54,7 +56,7 @@
 
 - (void)animateFrame:(id)sender {
 	CGRect rect = CGRectInset(self.window.frame, -100, -50);
-	[self.window setFrame:rect completion:nil];
+	[self.window setFrame:rect withDuration:0.7 timing:nil];
 }
 
 

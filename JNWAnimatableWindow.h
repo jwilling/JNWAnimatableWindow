@@ -53,6 +53,10 @@
 								   setup:(void (^)(CALayer *windowLayer))setup animations:(void (^)(CALayer *layer))animations;
 
 
-- (void)setFrame:(NSRect)frameRect completion:(void (^)(void))completion;
+// Sets the window to the frame specified using a layer The animation behavoior is the same as
+// NSWindow's full-screen animation, which cross-fades between the initial and final state images.
+//
+// The layer and the extra window will be destroyed automatically after the animation completes.
+- (void)setFrame:(NSRect)frameRect withDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timing;
 
 @end
