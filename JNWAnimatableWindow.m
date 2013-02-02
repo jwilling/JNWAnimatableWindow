@@ -63,6 +63,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	self.windowRepresentationLayer.shadowOpacity = JNWAnimatableWindowShadowOpacity;
 	
 	self.windowRepresentationLayer.contentsGravity = kCAGravityResize;
+	self.windowRepresentationLayer.opaque = YES;
 	
 	self.windowRepresentationLayer.shouldRasterize = YES;
 	self.windowRepresentationLayer.rasterizationScale = self.backingScaleFactor;

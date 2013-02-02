@@ -53,10 +53,8 @@
 }
 
 - (void)animateFrame:(id)sender {
-	//CGRect rect = CGRectOffset(CGRectInset(self.window.frame, -50, -50), 100, 0);
-	CGRect frame = self.window.screen.frame;
-	frame.origin = CGPointZero;
-	[self.window setFrame:frame completion:nil];
+	CGRect rect = CGRectInset(self.window.frame, -100, -50);
+	[self.window setFrame:rect completion:nil];
 }
 
 
