@@ -31,6 +31,9 @@
 // Because it is a static image, it will not reflect the state of the window if it changes.
 // If the window needs to change content while still having a transformed state,
 // call `-updateImageRepresentation` to update the backing image.
+//
+// Important note: This layer is optimized with a shadow path. If you need to change the bounds
+// or the size of the layer, you will need to update the shadow path yourself to reflect this change.
 @property (nonatomic, assign, readonly) CALayer *layer;
 
 // Destroys the layer and fake window. Only nessesary for use if the layer is animated manually.

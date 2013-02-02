@@ -33,6 +33,9 @@ static const CGSize JNWAnimatableWindowShadowOffset = (CGSize){ 0, -18 };
 static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 #define JNWAnimatableWindowShadowColor kCGColorBlack
 
+// Use an ease-in-out timing function if none are specified.
+#define JNWAnimatableWindowDefaultAnimationCurve kCAMediaTimingFunctionEaseInEaseOut
+
 @interface JNWAnimatableWindowContentView : NSView
 @end
 
@@ -61,13 +64,13 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	self.windowRepresentationLayer.shadowOffset = JNWAnimatableWindowShadowOffset;
 	self.windowRepresentationLayer.shadowRadius = JNWAnimatableWindowShadowRadius;
 	self.windowRepresentationLayer.shadowOpacity = JNWAnimatableWindowShadowOpacity;
-	//self.windowRepresentationLayer.shadowPath = CGPathCreateMutable();
+
+	CGPathRef shadowPath = CGPathCreateWithRect(self.bounds, NULL);
+	self.windowRepresentationLayer.shadowPath = shadowPath;
+	CGPathRelease(shadowPath);
 	
 	self.windowRepresentationLayer.contentsGravity = kCAGravityResize;
 	self.windowRepresentationLayer.opaque = YES;
-	
-	self.windowRepresentationLayer.shouldRasterize = YES;
-	self.windowRepresentationLayer.rasterizationScale = self.backingScaleFactor;
 }
 
 - (void)initializeFullScreenWindow {
@@ -93,6 +96,10 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	[self setupIfNeeded];
 	
 	return self.windowRepresentationLayer;
+}
+
+- (CGRect)bounds {
+	return (CGRect){ .size = self.frame.size };
 }
 
 
@@ -254,8 +261,18 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	
 	[super setFrame:frameRect display:YES animate:NO];
 	
-	NSImage *finalState = [self imageRepresentationOffscreen:YES];
+	// We need to explicitely animate the shadow path to reflect the new size.
+	CGPathRef shadowPath = CGPathCreateWithRect((CGRect){ .size = frameRect.size }, NULL);
+	CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"shadowPath"];
+	animation.fromValue = (id)self.windowRepresentationLayer.shadowPath;
+	animation.toValue = (__bridge id)(shadowPath);
+	animation.duration = duration;
+	animation.timingFunction = timing?:[CAMediaTimingFunction functionWithName:JNWAnimatableWindowDefaultAnimationCurve];
+	[self.windowRepresentationLayer addAnimation:animation forKey:@"shadowPath"];
+	self.windowRepresentationLayer.shadowPath = shadowPath;
+	CGPathRelease(shadowPath);
 	
+	NSImage *finalState = [self imageRepresentationOffscreen:YES];
 	[self performAnimations:^(CALayer *layer) {
 		self.windowRepresentationLayer.frame = frameRect;
 		self.windowRepresentationLayer.contents = finalState;
@@ -267,7 +284,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	
 	[CATransaction begin];
 	[CATransaction setAnimationDuration:duration];
-	[CATransaction setAnimationTimingFunction:timing?:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
+	[CATransaction setAnimationTimingFunction:timing?:[CAMediaTimingFunction functionWithName:JNWAnimatableWindowDefaultAnimationCurve]];
 	[CATransaction setCompletionBlock:^{
 		JNWAnimatableWindowOpenTransactions--;
 		
