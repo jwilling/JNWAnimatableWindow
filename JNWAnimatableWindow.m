@@ -62,6 +62,8 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	self.windowRepresentationLayer.shadowRadius = JNWAnimatableWindowShadowRadius;
 	self.windowRepresentationLayer.shadowOpacity = JNWAnimatableWindowShadowOpacity;
 	
+	self.windowRepresentationLayer.contentsGravity = kCAGravityResize;
+	
 	self.windowRepresentationLayer.shouldRasterize = YES;
 	self.windowRepresentationLayer.rasterizationScale = self.backingScaleFactor;
 }
@@ -111,7 +113,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	[[self.fullScreenWindow.contentView layer] addSublayer:self.windowRepresentationLayer];
 	self.windowRepresentationLayer.frame = self.frame;
 
-	NSImage *image = [self imageRepresentation];
+	NSImage *image = [self imageRepresentationOffscreen:NO];
 	
 	// Begin a non-animated transaction to ensure that the layer's contents are set before we get rid of the real window.
 	[CATransaction begin];
@@ -133,12 +135,12 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	self.alphaValue = 0.f;
 }
 
-- (NSImage *)imageRepresentation {
+- (NSImage *)imageRepresentationOffscreen:(BOOL)forceOffscreen {
 	CGRect originalWindowFrame = self.frame;
 	BOOL onScreen = self.isVisible;
 	//CGFloat alpha = self.alphaValue;
 	
-	if (!onScreen) {
+	if (!onScreen || forceOffscreen) {
 		// So the window is closed, and we need to get a screenshot of it without flashing.
 		// First, we find the frame that covers all the connected screens.
 		CGRect allWindowsFrame = CGRectZero;
@@ -159,7 +161,9 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 		_disableConstrainedWindow = YES;
 		
 		self.alphaValue = 0.f;
-		[super makeKeyAndOrderFront:nil];
+		if (!onScreen)
+			[super makeKeyAndOrderFront:nil];
+		
 		[self setFrame:frame display:NO];
 		
 		_disableConstrainedWindow = NO;
@@ -207,11 +211,13 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	[bitmap draw];
 	[NSGraphicsContext restoreGraphicsState];
 	
+	bitmap = nil;
+	
 	NSImage *image = [[NSImage alloc] init];
 	[image addRepresentation:bitmapCopy];
 
 	// If we weren't originally on the screen, there's a good chance we shouldn't be visible yet.
-	if (!onScreen)
+	if (!onScreen || forceOffscreen)
 		self.alphaValue = 0.f;
 	
 	// If we moved the window offscreen to get the screenshot, we want to move back to the original frame.
@@ -272,6 +278,19 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	[CATransaction commit];
 }
 
+- (void)setFrame:(NSRect)frameRect completion:(void (^)(void))completion {
+	[self setupIfNeeded];
+	
+	[super setFrame:frameRect display:YES animate:NO];
+		
+	NSImage *finalState = [self imageRepresentationOffscreen:YES];
+		
+	[self performAnimations:^(CALayer *layer) {
+		self.windowRepresentationLayer.frame = frameRect;
+		self.windowRepresentationLayer.contents = finalState;
+	} withDuration:0.5f timingFunction:nil];
+}
+
 
 
 #pragma mark Lifecycle
@@ -282,6 +301,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	self.alphaValue = 1.f;
 	
 	[self.windowRepresentationLayer removeFromSuperlayer];
+	self.windowRepresentationLayer.contents = nil;
 	self.windowRepresentationLayer = nil;
 	
 	[self.fullScreenWindow orderOut:nil];

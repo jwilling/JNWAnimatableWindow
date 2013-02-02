@@ -52,4 +52,7 @@
 - (void)makeKeyAndOrderFrontWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timingFunction
 								   setup:(void (^)(CALayer *windowLayer))setup animations:(void (^)(CALayer *layer))animations;
 
+
+- (void)setFrame:(NSRect)frameRect completion:(void (^)(void))completion;
+
 @end
