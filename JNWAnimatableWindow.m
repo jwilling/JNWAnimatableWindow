@@ -31,7 +31,7 @@ static NSUInteger JNWAnimatableWindowOpenTransactions = 0;
 static const CGFloat JNWAnimatableWindowShadowOpacity = 0.8f;
 static const CGSize JNWAnimatableWindowShadowOffset = (CGSize){ 0, -18 };
 static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
-#define JNWAnimatableWindowShadowColor [NSColor blackColor]
+#define JNWAnimatableWindowShadowColor kCGColorBlack
 
 @interface JNWAnimatableWindowContentView : NSView
 @end
@@ -57,7 +57,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	self.windowRepresentationLayer = [CALayer layer];
 	self.windowRepresentationLayer.contentsScale = self.backingScaleFactor;
 	
-	self.windowRepresentationLayer.shadowColor = JNWAnimatableWindowShadowColor.CGColor;
+	self.windowRepresentationLayer.shadowColor = CGColorGetConstantColor(JNWAnimatableWindowShadowColor);
 	self.windowRepresentationLayer.shadowOffset = JNWAnimatableWindowShadowOffset;
 	self.windowRepresentationLayer.shadowRadius = JNWAnimatableWindowShadowRadius;
 	self.windowRepresentationLayer.shadowOpacity = JNWAnimatableWindowShadowOpacity;
