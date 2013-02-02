@@ -104,17 +104,39 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	if (self.windowRepresentationLayer != nil) {
 		return;
 	}
-	
-	BOOL onScreen = [self isVisible];
-	
+		
 	[self initializeFullScreenWindow];
 	[self initializeWindowRepresentationLayer];
 	
 	[[self.fullScreenWindow.contentView layer] addSublayer:self.windowRepresentationLayer];
 	self.windowRepresentationLayer.frame = self.frame;
 
+	NSImage *image = [self imageRepresentation];
 	
+	// Begin a non-animated transaction to ensure that the layer's contents are set before we get rid of the real window.
+	[CATransaction begin];
+	[CATransaction setDisableActions:YES];
+	
+	self.windowRepresentationLayer.contents = image;
+	
+	// The setup block is called when we are ordering in. We want this non-animated and done before the the fake window
+	// is shown, so we do in in the same transaction.
+	if (setupBlock != nil)
+		setupBlock(self.windowRepresentationLayer);
+	
+	[CATransaction commit];
+	
+	[self.fullScreenWindow makeKeyAndOrderFront:nil];
+
+	// Effectively hide the original window. If we are ordering in, the window will become visible again once
+	// the fake window is destroyed.
+	self.alphaValue = 0.f;
+}
+
+- (NSImage *)imageRepresentation {
 	CGRect originalWindowFrame = self.frame;
+	BOOL onScreen = self.isVisible;
+	//CGFloat alpha = self.alphaValue;
 	
 	if (!onScreen) {
 		// So the window is closed, and we need to get a screenshot of it without flashing.
@@ -136,48 +158,69 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 		// us to put the window off-screen.
 		_disableConstrainedWindow = YES;
 		
-		self.alphaValue = 0.f;		
-		[self setFrame:frame display:NO];
+		self.alphaValue = 0.f;
 		[super makeKeyAndOrderFront:nil];
+		[self setFrame:frame display:NO];
 		
 		_disableConstrainedWindow = NO;
 	}
 	
-	// Begin a non-animated transaction to ensure that the layer's contents are set before we get rid of the real window.
-	[CATransaction begin];
-	[CATransaction setDisableActions:YES];
-	
-	// If we are ordering ourself in, we will be off-screen and will not be visible. If ordering out, we're already visible.
+	// If we are ordering ourself in, we will be off-screen and will not be visible.
 	self.alphaValue = 1.f;
 	
 	// Grab the image representation of the window, without the shadows.
-	[self updateImageRepresentation];
+	CGImageRef imageRef = CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, (CGWindowID)self.windowNumber, kCGWindowImageBoundsIgnoreFraming);
 	
-	// The setup block is called when we are ordering in. We want this non-animated and done before the the fake window
-	// is shown, so we do in in the same transaction.
-	if (setupBlock != nil)
-		setupBlock(self.windowRepresentationLayer);
+	// So there's a problem. As it turns out, CGWindowListCreateImage() returns a CGImageRef
+	// that apparently is backed by pixels that don't actually exist until they are queried.
+	//
+	// This is a significant problem, because what we actually want to do is to grab the image
+	// from the window, then set its alpha to 0. But if the actual pixels haven't been grabbed
+	// yet, then by the time we actually use them sometime later in the run loop the alpha of
+	// the window will have already gone flying off into the distance and we're left with a
+	// completely transparent image. That's no good.
+	//
+	// So here's a very nasty workaround. What we're doing is actually forcing the real pixels
+	// to get copied over from the WindowServer by actually drawing them into another context
+	// that has identical settings to the original one. This isn't too wasteful, and it's
+	// far better than actually copying over all of the real pixel data.
+	NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc] initWithCGImage:imageRef];
+	CGImageRelease(imageRef);
+
+	// Create a new bitmap representation with the same settings as the old one.
+	NSBitmapImageRep *bitmapCopy = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
+																		   pixelsWide:bitmap.size.width
+																		   pixelsHigh:bitmap.size.height
+																		bitsPerSample:bitmap.bitsPerSample
+																	  samplesPerPixel:bitmap.samplesPerPixel
+																			 hasAlpha:YES
+																			 isPlanar:bitmap.isPlanar
+																	   colorSpaceName:bitmap.colorSpaceName
+																		 bitmapFormat:bitmap.bitmapFormat
+																		  bytesPerRow:bitmap.bytesPerRow
+																		 bitsPerPixel:bitmap.bitsPerPixel];
 	
-	[CATransaction commit];
+	[NSGraphicsContext saveGraphicsState];
+	// Set the current context to the bitmap image context we just created.
+	[NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithBitmapImageRep:bitmapCopy]];
+	// This forces the WindowServer to provide the backing pixels, as mentioned above.
+	[bitmap draw];
+	[NSGraphicsContext restoreGraphicsState];
 	
-	[self.fullScreenWindow makeKeyAndOrderFront:nil];
+	NSImage *image = [[NSImage alloc] init];
+	[image addRepresentation:bitmapCopy];
+
+	// If we weren't originally on the screen, there's a good chance we shouldn't be visible yet.
+	if (!onScreen)
+		self.alphaValue = 0.f;
 	
-	// Effectively hide the original window. If we are ordering in, the window will become visible again once
-	// the fake window is destroyed.
-	self.alphaValue = 0.f;
-	
-	// If we moved the window offscreen to get the screenshot, we want to move back to the original frame
+	// If we moved the window offscreen to get the screenshot, we want to move back to the original frame.
 	if (!CGRectEqualToRect(originalWindowFrame, self.frame)) {
 		[self setFrame:originalWindowFrame display:NO];
-	}		
+	}
+	
+	return image;
 }
-
-- (void)updateImageRepresentation {
-	CGImageRef image = CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, (CGWindowID)self.windowNumber, kCGWindowImageBoundsIgnoreFraming);
-	self.windowRepresentationLayer.contents = (__bridge id)image;
-	CGImageRelease(image);
-}
-
 
 
 #pragma mark Window Overrides
