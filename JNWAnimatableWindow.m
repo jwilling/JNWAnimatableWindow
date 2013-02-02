@@ -191,10 +191,10 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	// far better than actually copying over all of the real pixel data.
 	CGSize imageSize = CGSizeMake(CGImageGetWidth(imageRef), CGImageGetHeight(imageRef));
 	CGContextRef context = CGBitmapContextCreate(NULL, imageSize.width, imageSize.height, 8, 0,
-													[[NSColorSpace deviceRGBColorSpace] CGColorSpace], kCGBitmapByteOrder32Host | kCGImageAlphaPremultipliedFirst);
+												 [[NSColorSpace deviceRGBColorSpace] CGColorSpace], kCGBitmapByteOrder32Host | kCGImageAlphaPremultipliedFirst);
     
-    [NSGraphicsContext saveGraphicsState];
-    [NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithGraphicsPort:context flipped:NO]];
+	[NSGraphicsContext saveGraphicsState];
+	[NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithGraphicsPort:context flipped:NO]];
 	NSImage *oldImage = [[NSImage alloc] initWithCGImage:imageRef size:CGSizeZero];
 	[oldImage drawInRect:NSMakeRect(0, 0, imageSize.width, imageSize.height) fromRect:NSZeroRect operation:NSCompositeCopy fraction:1.0];
 	[NSGraphicsContext restoreGraphicsState];
@@ -205,7 +205,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	CGImageRelease(imageRef);
 	CGImageRelease(copiedImageRef);
 	CGContextRelease(context);
-						 
+	
 	// If we weren't originally on the screen, there's a good chance we shouldn't be visible yet.
 	if (!onScreen || forceOffscreen)
 		self.alphaValue = 0.f;
