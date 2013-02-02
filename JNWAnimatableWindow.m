@@ -261,7 +261,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	
 	[super setFrame:frameRect display:YES animate:NO];
 	
-	// We need to explicitely animate the shadow path to reflect the new size.
+	// We need to explicitly animate the shadow path to reflect the new size.
 	CGPathRef shadowPath = CGPathCreateWithRect((CGRect){ .size = frameRect.size }, NULL);
 	CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"shadowPath"];
 	animation.fromValue = (id)self.windowRepresentationLayer.shadowPath;
