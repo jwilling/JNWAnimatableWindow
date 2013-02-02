@@ -61,6 +61,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	self.windowRepresentationLayer.shadowOffset = JNWAnimatableWindowShadowOffset;
 	self.windowRepresentationLayer.shadowRadius = JNWAnimatableWindowShadowRadius;
 	self.windowRepresentationLayer.shadowOpacity = JNWAnimatableWindowShadowOpacity;
+	//self.windowRepresentationLayer.shadowPath = CGPathCreateMutable();
 	
 	self.windowRepresentationLayer.contentsGravity = kCAGravityResize;
 	self.windowRepresentationLayer.opaque = YES;
@@ -83,7 +84,6 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	self.fullScreenWindow.opaque = NO;
 	self.fullScreenWindow.contentView = [[JNWAnimatableWindowContentView alloc] initWithFrame:[self.fullScreenWindow.contentView bounds]];
 }
-
 
 
 #pragma mark Getters
@@ -187,36 +187,25 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	//
 	// So here's a very nasty workaround. What we're doing is actually forcing the real pixels
 	// to get copied over from the WindowServer by actually drawing them into another context
-	// that has identical settings to the original one. This isn't too wasteful, and it's
+	// that has settings optimized for use with Core Animation. This isn't too wasteful, and it's
 	// far better than actually copying over all of the real pixel data.
-	NSBitmapImageRep *bitmap = [[NSBitmapImageRep alloc] initWithCGImage:imageRef];
-	CGImageRelease(imageRef);
-
-	// Create a new bitmap representation with the same settings as the old one.
-	NSBitmapImageRep *bitmapCopy = [[NSBitmapImageRep alloc] initWithBitmapDataPlanes:NULL
-																		   pixelsWide:bitmap.size.width
-																		   pixelsHigh:bitmap.size.height
-																		bitsPerSample:bitmap.bitsPerSample
-																	  samplesPerPixel:bitmap.samplesPerPixel
-																			 hasAlpha:YES
-																			 isPlanar:bitmap.isPlanar
-																	   colorSpaceName:bitmap.colorSpaceName
-																		 bitmapFormat:bitmap.bitmapFormat
-																		  bytesPerRow:bitmap.bytesPerRow
-																		 bitsPerPixel:bitmap.bitsPerPixel];
-	
-	[NSGraphicsContext saveGraphicsState];
-	// Set the current context to the bitmap image context we just created.
-	[NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithBitmapImageRep:bitmapCopy]];
-	// This forces the WindowServer to provide the backing pixels, as mentioned above.
-	[bitmap draw];
+	CGSize imageSize = CGSizeMake(CGImageGetWidth(imageRef), CGImageGetHeight(imageRef));
+	CGContextRef context = CGBitmapContextCreate(NULL, imageSize.width, imageSize.height, 8, 0,
+													[[NSColorSpace deviceRGBColorSpace] CGColorSpace], kCGBitmapByteOrder32Host | kCGImageAlphaPremultipliedFirst);
+    
+    [NSGraphicsContext saveGraphicsState];
+    [NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithGraphicsPort:context flipped:NO]];
+	NSImage *oldImage = [[NSImage alloc] initWithCGImage:imageRef size:CGSizeZero];
+	[oldImage drawInRect:NSMakeRect(0, 0, imageSize.width, imageSize.height) fromRect:NSZeroRect operation:NSCompositeCopy fraction:1.0];
 	[NSGraphicsContext restoreGraphicsState];
 	
-	bitmap = nil;
+	CGImageRef copiedImageRef = CGBitmapContextCreateImage(context);
+	NSImage *image = [[NSImage alloc] initWithCGImage:copiedImageRef size:CGSizeZero];
 	
-	NSImage *image = [[NSImage alloc] init];
-	[image addRepresentation:bitmapCopy];
-
+	CGImageRelease(imageRef);
+	CGImageRelease(copiedImageRef);
+	CGContextRelease(context);
+						 
 	// If we weren't originally on the screen, there's a good chance we shouldn't be visible yet.
 	if (!onScreen || forceOffscreen)
 		self.alphaValue = 0.f;
@@ -240,15 +229,15 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 
 #pragma mark Convenince Window Methods
 
-- (void)orderOutWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timingFunction animations:(void (^)(CALayer *))animations {
+- (void)orderOutWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timing animations:(void (^)(CALayer *))animations {
 	[self setupIfNeeded];
 	
 	// The fake window is in the exact same position as the real one, so we can safely order ourself out.
 	[super orderOut:nil];
-	[self performAnimations:animations withDuration:duration timingFunction:timingFunction];
+	[self performAnimations:animations withDuration:duration timing:timing];
 }
 
-- (void)makeKeyAndOrderFrontWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timingFunction
+- (void)makeKeyAndOrderFrontWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timing
 								   setup:(void (^)(CALayer *))setup animations:(void (^)(CALayer *))animations {
 	[self setupIfNeededWithSetupBlock:setup];
 	
@@ -257,13 +246,28 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	if (!self.isVisible)
 		[super makeKeyAndOrderFront:nil];
 	
-	[self performAnimations:animations withDuration:duration timingFunction:timingFunction];
+	[self performAnimations:animations withDuration:duration timing:timing];
 }
 
-- (void)performAnimations:(void (^)(CALayer *layer))animations withDuration:(CFTimeInterval)duration timingFunction:(CAMediaTimingFunction *)timingFunction {
+- (void)setFrame:(NSRect)frameRect withDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timing {
+	[self setupIfNeeded];
+	
+	[super setFrame:frameRect display:YES animate:NO];
+	
+	NSImage *finalState = [self imageRepresentationOffscreen:YES];
+	
+	[self performAnimations:^(CALayer *layer) {
+		self.windowRepresentationLayer.frame = frameRect;
+		self.windowRepresentationLayer.contents = finalState;
+	} withDuration:duration timing:timing];
+}
+
+- (void)performAnimations:(void (^)(CALayer *layer))animations withDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timing {
+	[NSAnimationContext beginGrouping];
+	
 	[CATransaction begin];
 	[CATransaction setAnimationDuration:duration];
-	[CATransaction setAnimationTimingFunction:(timingFunction ?: [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut])];
+	[CATransaction setAnimationTimingFunction:timing?:[CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut]];
 	[CATransaction setCompletionBlock:^{
 		JNWAnimatableWindowOpenTransactions--;
 		
@@ -277,19 +281,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	JNWAnimatableWindowOpenTransactions++;
 	
 	[CATransaction commit];
-}
-
-- (void)setFrame:(NSRect)frameRect completion:(void (^)(void))completion {
-	[self setupIfNeeded];
-	
-	[super setFrame:frameRect display:YES animate:NO];
-		
-	NSImage *finalState = [self imageRepresentationOffscreen:YES];
-		
-	[self performAnimations:^(CALayer *layer) {
-		self.windowRepresentationLayer.frame = frameRect;
-		self.windowRepresentationLayer.contents = finalState;
-	} withDuration:0.5f timingFunction:nil];
+	[NSAnimationContext endGrouping];
 }
 
 
