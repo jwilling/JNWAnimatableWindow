@@ -7,14 +7,14 @@
 
 `JNWAnimatableWindow` has provides both a layer property and a set of order out & order front methods to simplify common animations. If you would like to animate the window manually and if the window is already visible, you can just manipulate the `layer` property on the window.
 
-If you want to animate a window closing:
+Example of animating a window closing:
 
 ``` objc
 [self.window orderOutWithDuration:0.7 timing:nil animations:^(CALayer *layer) {
 	layer.opacity = 0.f;
 }];
 ```
-Or opening:
+Opening:
 
 ``` objc
 [self.window makeKeyAndOrderFrontWithDuration:0.7 timing:nil setup:^(CALayer *layer) {
@@ -24,6 +24,11 @@ Or opening:
 	// This is animated
 	layer.opacity = 1.f;
 }];
+```
+Frame change:
+
+``` objc
+[self.window setFrame:newFrame withDuration:0.7 timing:nil];
 ```
 
 In the convenience methods, everything is wrapped in an animated `CATransaction`, so you can modify any layer property you wish and it should be implicitly animated. Also note that passing in nil for the timing function will result in a default animation of ease-in-out.
@@ -39,7 +44,7 @@ Due to the way `NSWindow` works, there are some large limitations with what this
 ## License ##
 `JNWAnimatableWindow` is licensed under the [MIT](http://opensource.org/licenses/MIT) license. See [LICENSE.md](https://github.com/jwilling/JNWAnimatableWindow/blob/master/LICENSE.md).
 
-But really, all I care about is that you put this library to good use. I want to help make OS X development a friendlier place, and this is one of my attempts at doing so. If you use this, *please* make a note on the [Wiki](https://github.com/jwilling/JNWAnimatableWindow/wiki/JNWAnimatableWindow-in-use.), or get in touch with me and I'll do it for you.
+But really, all I care about is that you put this library to good use. I want to help make OS X development a friendlier place, and this is one of my attempts at doing so. If you use this, *please* make a note on the [**Wiki**](https://github.com/jwilling/JNWAnimatableWindow/wiki/JNWAnimatableWindow-in-use.), or get in touch with me and I'll do it for you.
 
 ## Get In Touch ##
 You can follow me on Twitter as [@j_willing](http://twitter.com/j_willing), email me at the email listed on my GitHub profile, or read my blog at [jwilling.com](http://www.jwilling.com).
