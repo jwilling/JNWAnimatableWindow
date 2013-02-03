@@ -27,11 +27,12 @@ static NSUInteger JNWAnimatableWindowOpenTransactions = 0;
 
 // These are attempts at determining the default shadow settings on a normal window. These
 // aren't perfect, but since NSWindow actually uses CGS functions to set the window I am not
-// entirely sure there's a way I can get the exact information about shadow settings.
-static const CGFloat JNWAnimatableWindowShadowOpacity = 0.8f;
-static const CGSize JNWAnimatableWindowShadowOffset = (CGSize){ 0, -18 };
-static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
-#define JNWAnimatableWindowShadowColor kCGColorBlack
+// entirely sure there's a way to translate the actual shadow values to these values.
+static const CGFloat JNWAnimatableWindowShadowOpacity = 0.58f;
+static const CGSize JNWAnimatableWindowShadowOffset = (CGSize){ 0, -30 };
+static const CGFloat JNWAnimatableWindowShadowRadius = 19.f;
+static const CGFloat JNWAnimatableWindowShadowHorizontalOutset = 7.f;
+static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 
 // Use an ease-in-out timing function if none are specified.
 #define JNWAnimatableWindowDefaultAnimationCurve kCAMediaTimingFunctionEaseInEaseOut
@@ -41,7 +42,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 
 @interface JNWAnimatableWindow() {
 	// When we want to move the window off-screen to take the screen shot, we want
-	// to make sure we aren't being constranied. Although the documentation does not
+	// to make sure we aren't being constrained. Although the documentation does not
 	// state that it constrains windows when moved using -setFrame:display:, such is the case.
 	BOOL _disableConstrainedWindow;
 }
@@ -60,12 +61,14 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	self.windowRepresentationLayer = [CALayer layer];
 	self.windowRepresentationLayer.contentsScale = self.backingScaleFactor;
 	
-	self.windowRepresentationLayer.shadowColor = CGColorGetConstantColor(JNWAnimatableWindowShadowColor);
+	CGColorRef shadowColor = CGColorCreateGenericRGB(0, 0, 0, JNWAnimatableWindowShadowOpacity);
+	self.windowRepresentationLayer.shadowColor = shadowColor;
 	self.windowRepresentationLayer.shadowOffset = JNWAnimatableWindowShadowOffset;
 	self.windowRepresentationLayer.shadowRadius = JNWAnimatableWindowShadowRadius;
-	self.windowRepresentationLayer.shadowOpacity = JNWAnimatableWindowShadowOpacity;
+	self.windowRepresentationLayer.shadowOpacity = 1.f;
+	CGColorRelease(shadowColor);
 
-	CGPathRef shadowPath = CGPathCreateWithRect(self.bounds, NULL);
+	CGPathRef shadowPath = CGPathCreateWithRect(self.shadowRect, NULL);
 	self.windowRepresentationLayer.shadowPath = shadowPath;
 	CGPathRelease(shadowPath);
 	
@@ -102,7 +105,11 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	return (CGRect){ .size = self.frame.size };
 }
 
-
+- (CGRect)shadowRect {
+	CGRect rect = CGRectInset(self.bounds, -JNWAnimatableWindowShadowHorizontalOutset, 0);
+	rect.size.height += JNWAnimatableWindowShadowTopOffset;
+	return rect;
+}
 
 #pragma mark Setup and Drawing
 
@@ -248,7 +255,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 								   setup:(void (^)(CALayer *))setup animations:(void (^)(CALayer *))animations {
 	[self setupIfNeededWithSetupBlock:setup];
 	
-	// Avoid unnessesary layout passes if we're already visible when this method is called. This could take place if the window
+	// Avoid unnecessary layout passes if we're already visible when this method is called. This could take place if the window
 	// is still being animated out, but the user suddenly changes their mind and the window needs to come back on screen again.
 	if (!self.isVisible)
 		[super makeKeyAndOrderFront:nil];
@@ -262,7 +269,7 @@ static const CGFloat JNWAnimatableWindowShadowRadius = 22.f;
 	[super setFrame:frameRect display:YES animate:NO];
 	
 	// We need to explicitly animate the shadow path to reflect the new size.
-	CGPathRef shadowPath = CGPathCreateWithRect((CGRect){ .size = frameRect.size }, NULL);
+	CGPathRef shadowPath = CGPathCreateWithRect(self.shadowRect, NULL);
 	CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"shadowPath"];
 	animation.fromValue = (id)self.windowRepresentationLayer.shadowPath;
 	animation.toValue = (__bridge id)(shadowPath);

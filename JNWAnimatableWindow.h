@@ -36,8 +36,8 @@
 // or the size of the layer, you will need to update the shadow path yourself to reflect this change.
 @property (nonatomic, assign, readonly) CALayer *layer;
 
-// Destroys the layer and fake window. Only nessesary for use if the layer is animated manually.
-// If the convenience methods are used below, calling this is not nessesary as it is done automatically.
+// Destroys the layer and fake window. Only necessary for use if the layer is animated manually.
+// If the convenience methods are used below, calling this is not necessary as it is done automatically.
 - (void)destroyTransformingWindow;
 
 // Order a window out with an animation. The `animations` block is wrapped in a `CATransaction`, so implicit
@@ -56,7 +56,7 @@
 								   setup:(void (^)(CALayer *windowLayer))setup animations:(void (^)(CALayer *layer))animations;
 
 
-// Sets the window to the frame specified using a layer The animation behavoior is the same as
+// Sets the window to the frame specified using a layer The animation behavior is the same as
 // NSWindow's full-screen animation, which cross-fades between the initial and final state images.
 //
 // The layer and the extra window will be destroyed automatically after the animation completes.
