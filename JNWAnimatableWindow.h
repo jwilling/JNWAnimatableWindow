@@ -47,6 +47,11 @@
 - (void)orderOutWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timingFunction
 				  animations:(void (^)(CALayer *windowLayer))animations;
 
+// Order a window out with an animation, automatically cleaning up after completion.
+//
+// The delegate of the animation will be changed.
+- (void)orderOutWithAnimation:(CAAnimation *)animation;
+
 // Make a window key and visible with an animation. The setup block will be performed with implicit animations
 // disabled, so it is an ideal time to set the initial state for your animation. The `animations` block is wrapped
 // in a `CATransaction`, so implicit animations will be enabled. Pass in nil for the timing function to default to ease-in-out.
@@ -55,6 +60,13 @@
 - (void)makeKeyAndOrderFrontWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timingFunction
 								   setup:(void (^)(CALayer *windowLayer))setup animations:(void (^)(CALayer *layer))animations;
 
+
+// Make a window key and visible with an animation, automatically cleaning up after completion.
+//
+// The delegate of the animation will be changed.
+//
+// Note that the layer's initial opacity will be set to 0.
+- (void)makeKeyAndOrderFrontWithAnimation:(CAAnimation *)animation;
 
 // Sets the window to the frame specified using a layer The animation behavior is the same as
 // NSWindow's full-screen animation, which cross-fades between the initial and final state images.

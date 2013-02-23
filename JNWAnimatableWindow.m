@@ -251,6 +251,13 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 	[self performAnimations:animations withDuration:duration timing:timing];
 }
 
+- (void)orderOutWithAnimation:(CAAnimation *)animation {
+	[self setupIfNeeded];
+	
+	[super orderOut:nil];
+	[self performAnimation:animation forKey:@"JNWOrderOut"];
+}
+
 - (void)makeKeyAndOrderFrontWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timing
 								   setup:(void (^)(CALayer *))setup animations:(void (^)(CALayer *))animations {
 	[self setupIfNeededWithSetupBlock:setup];
@@ -261,6 +268,19 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 		[super makeKeyAndOrderFront:nil];
 	
 	[self performAnimations:animations withDuration:duration timing:timing];
+}
+
+- (void)makeKeyAndOrderFrontWithAnimation:(CAAnimation *)animation {
+	[self setupIfNeededWithSetupBlock:^(CALayer *layer) {
+		// Set the initial opacity of the layer to 0 since the most usual use case for this is to
+		// somehow involve a fade in in some way or another. We don't want a flash if this is the case.
+		layer.opacity = 0.f;
+	}];
+	
+	if (!self.isVisible)
+		[super makeKeyAndOrderFront:nil];
+	
+	[self performAnimation:animation forKey:@"JNWMakeKeyAndOrderFront"];
 }
 
 - (void)setFrame:(NSRect)frameRect withDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timing {
@@ -293,12 +313,7 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 	[CATransaction setAnimationDuration:duration];
 	[CATransaction setAnimationTimingFunction:timing?:[CAMediaTimingFunction functionWithName:JNWAnimatableWindowDefaultAnimationCurve]];
 	[CATransaction setCompletionBlock:^{
-		JNWAnimatableWindowOpenTransactions--;
-		
-		// If there are zero pending operations remaining, we can safely assume that it is time for the window to be destroyed.
-		if (JNWAnimatableWindowOpenTransactions == 0) {
-			[self destroyTransformingWindow];
-		}
+		[self destroyTransformingWindowIfNeeded];
 	}];
 	
 	animations(self.windowRepresentationLayer);
@@ -308,9 +323,31 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 	[NSAnimationContext endGrouping];
 }
 
+- (void)performAnimation:(CAAnimation *)animation forKey:(NSString *)key {
+	animation.delegate = self;
+	animation.removedOnCompletion = NO;
+	[self.windowRepresentationLayer addAnimation:animation forKey:key];
+	JNWAnimatableWindowOpenTransactions++;
+}
+
+// Called when the window is animated using CAAnimations.
+- (void)animationDidStop:(CAAnimation *)anim finished:(BOOL)flag {
+	[self destroyTransformingWindowIfNeeded];
+}
+
 
 
 #pragma mark Lifecycle
+
+// Calls `-destroyTransformingWindow` only when the running animation count is zero.
+- (void)destroyTransformingWindowIfNeeded {
+	JNWAnimatableWindowOpenTransactions--;
+	
+	// If there are zero pending operations remaining, we can safely assume that it is time for the window to be destroyed.
+	if (JNWAnimatableWindowOpenTransactions == 0) {
+		[self destroyTransformingWindow];
+	}
+}
 
 // Called when the ordering methods are complete. If the layer is used
 // manually, this should be called when animations are complete.
