@@ -17,4 +17,6 @@
 - (IBAction)animateOut:(id)sender;
 - (IBAction)animateFrame:(id)sender;
 
+- (IBAction)animateOutExplicitly:(id)sender;
+
 @end

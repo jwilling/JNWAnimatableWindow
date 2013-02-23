@@ -29,7 +29,7 @@
 		return NO;
 	}
 	
-	//[self.window makeKeyAndOrderFrontWithSetup:^(CALayer *layer) {
+
 	[self.window makeKeyAndOrderFrontWithDuration:self.animationDuration timing:nil setup:^(CALayer *layer) {
 		// Anything done in this setup block is performed without any animation.
 		// The layer will not be visible during this time so now is our chance to set initial
@@ -43,8 +43,8 @@
 		// is removed there will be no discernible jump to that state.
 		//
 		// To change the default timing and duration, just wrap the animations in an NSAnimationContext.
-			layer.transform = CATransform3DIdentity;
-			layer.opacity = 1.f;
+		layer.transform = CATransform3DIdentity;
+		layer.opacity = 1.f;
 	}];
 	
 	return NO;
@@ -57,6 +57,21 @@
 		layer.transform = CATransform3DMakeTranslation(0.f, -50.f, 0.f);
 		layer.opacity = 0.f;
 	}];
+}
+
+- (void)animateOutExplicitly:(id)sender {
+	CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+	opacity.toValue = @0;
+	
+	CABasicAnimation *translation = [CABasicAnimation animationWithKeyPath:@"transform.translation.y"];
+	translation.toValue = @(-50.f);
+	
+	CAAnimationGroup *group = [CAAnimationGroup animation];
+	group.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
+	group.animations = @[ opacity, translation ];
+	group.duration = self.animationDuration;
+	
+	[self.window orderOutWithAnimation:group];
 }
 
 - (void)animateFrame:(id)sender {
