@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name         = "JNWAnimatableWindow"
-  s.version      = "0.5.0"
+  s.version      = "0.9.0"
   s.summary      = "Smooth animation of a NSWindow using a CALayer."
   s.homepage     = "https://github.com/jwilling/JNWAnimatableWindow"
   s.license      = 'MIT'
