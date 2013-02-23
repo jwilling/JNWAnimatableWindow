@@ -7,7 +7,27 @@
 
 `JNWAnimatableWindow` has provides both a layer property and a set of order out & order front methods to simplify common animations. If you would like to animate the window manually and if the window is already visible, you can just manipulate the `layer` property on the window.
 
-Example of animating a window closing:
+The following methods exist to animate the window using implicit animations:
+
+``` objc
+- (void)orderOutWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timingFunction animations:(void (^)(CALayer *windowLayer))animations;
+- (void)makeKeyAndOrderFrontWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timingFunction setup:(void (^)(CALayer *windowLayer))setup animations:(void (^)(CALayer *layer))animations;
+- (void)setFrame:(NSRect)frameRect withDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timing;
+```
+
+If you would like to animate the window explicitly, you can do so using the following methods:
+
+``` objc
+- (void)orderOutWithAnimation:(CAAnimation *)animation;
+- (void)makeKeyAndOrderFrontWithAnimation:(CAAnimation *)animation;
+```
+
+**All of these methods are explained fully in the header's documentation.**
+
+
+### Examples ###
+
+Closing:
 
 ``` objc
 [self.window orderOutWithDuration:0.7 timing:nil animations:^(CALayer *layer) {
@@ -31,14 +51,17 @@ Frame change:
 [self.window setFrame:newFrame withDuration:0.7 timing:nil];
 ```
 
-In the convenience methods, everything is wrapped in an animated `CATransaction`, so you can modify any layer property you wish and it should be implicitly animated. Also note that passing in nil for the timing function will result in a default animation of ease-in-out.
-
-If you would like to add or remove your windows with `CAAnimation`s, you can do so using the following methods:
+Explicit animation:
 
 ``` objc
-- (void)orderOutWithAnimation:(CAAnimation *)animation;
-- (void)makeKeyAndOrderFrontWithAnimation:(CAAnimation *)animation;
+CABasicAnimation *opacity = [CABasicAnimation animationWithKeyPath:@"opacity"];
+opacity.toValue = @0;
+[self.window orderOutWithAnimation:opacity];
 ```
+
+### More Information ###
+
+In the convenience methods, everything is wrapped in an animated `CATransaction`, so you can modify any layer property you wish and it should be implicitly animated. Also note that passing in nil for the timing function will result in a default animation of ease-in-out.
 
 If you want to just make your windows fly around the screen like a boss on a whim, you can directly use the `layer` property on `JNWAnimatableWindow`. The first time this property is accessed, it will lazily create an image representation of the window and place that into a layer which is then animatable. When you are done with the layer, you are responsible for calling `-destroyTransformingWindow`, which will remove the extra window and release resources. This is not necessary if you use one of the convenience methods listed above.
 
