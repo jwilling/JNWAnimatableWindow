@@ -270,11 +270,11 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 	[self performAnimations:animations withDuration:duration timing:timing];
 }
 
-- (void)makeKeyAndOrderFrontWithAnimation:(CAAnimation *)animation {
+- (void)makeKeyAndOrderFrontWithAnimation:(CAAnimation *)animation initialOpacity:(CGFloat)opacity {
 	[self setupIfNeededWithSetupBlock:^(CALayer *layer) {
 		// Set the initial opacity of the layer to 0 since the most usual use case for this is to
 		// somehow involve a fade in in some way or another. We don't want a flash if this is the case.
-		layer.opacity = 0.f;
+		layer.opacity = opacity;
 	}];
 	
 	if (!self.isVisible)

@@ -65,8 +65,8 @@
 //
 // The delegate of the animation will be changed.
 //
-// Note that the layer's initial opacity will be set to 0.
-- (void)makeKeyAndOrderFrontWithAnimation:(CAAnimation *)animation;
+// The opacity of the layer will be set to the passed in opacity before it is shown.
+- (void)makeKeyAndOrderFrontWithAnimation:(CAAnimation *)animation initialOpacity:(CGFloat)opacity;
 
 // Sets the window to the frame specified using a layer The animation behavior is the same as
 // NSWindow's full-screen animation, which cross-fades between the initial and final state images.
