@@ -77,4 +77,4 @@ Due to the way `NSWindow` works, there are some large limitations with what this
 But really, all I care about is that you put this library to good use. I want to help make OS X development a friendlier place, and this is one of my attempts at doing so. If you use this, *please* make a note on the [**Wiki**](https://github.com/jwilling/JNWAnimatableWindow/wiki/JNWAnimatableWindow-in-use.), or get in touch with me and I'll do it for you.
 
 ## Get In Touch ##
-You can follow me on Twitter as [@j_willing](http://twitter.com/j_willing), email me at the email listed on my GitHub profile, or read my blog at [jwilling.com](http://www.jwilling.com).
+You can follow me on Twitter as [@willing](http://twitter.com/willing), email me at the email listed on my GitHub profile, or read my blog at [jwilling.com](http://www.jwilling.com).
