@@ -29,7 +29,7 @@ static NSUInteger JNWAnimatableWindowOpenTransactions = 0;
 // aren't perfect, but since NSWindow actually uses CGS functions to set the window I am not
 // entirely sure there's a way to translate the actual shadow values to these values.
 static const CGFloat JNWAnimatableWindowShadowOpacity = 0.58f;
-static const CGSize JNWAnimatableWindowShadowOffset = (CGSize){ 0, -30 };
+static const CGSize JNWAnimatableWindowShadowOffset = (CGSize){ 0, -30.f };
 static const CGFloat JNWAnimatableWindowShadowRadius = 19.f;
 static const CGFloat JNWAnimatableWindowShadowHorizontalOutset = 7.f;
 static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
@@ -52,8 +52,6 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 @end
 
 @implementation JNWAnimatableWindow
-
-
 
 #pragma mark Initialization
 
@@ -92,9 +90,6 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 	self.fullScreenWindow.opaque = NO;
 	self.fullScreenWindow.contentView = [[JNWAnimatableWindowContentView alloc] initWithFrame:CGRectZero];
 }
-
-
-#pragma mark Getters
 
 - (CALayer *)layer {
 	// If the layer does not exist at this point, we create it and set it up.
@@ -139,8 +134,9 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 	
 	// The setup block is called when we are ordering in. We want this non-animated and done before the the fake window
 	// is shown, so we do in in the same transaction.
-	if (setupBlock != nil)
+	if (setupBlock != nil) {
 		setupBlock(self.windowRepresentationLayer);
+	}
 	
 	[CATransaction commit];
 	
@@ -189,7 +185,7 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 	self.alphaValue = 1.f;
 	
 	// Grab the image representation of the window, without the shadows.
-	CGImageRef imageRef = CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, (CGWindowID)self.windowNumber, kCGWindowImageBoundsIgnoreFraming);
+	CGImageRef windowImageRef = CGWindowListCreateImage(CGRectNull, kCGWindowListOptionIncludingWindow, (CGWindowID)self.windowNumber, kCGWindowImageBoundsIgnoreFraming);
 	
 	// So there's a problem. As it turns out, CGWindowListCreateImage() returns a CGImageRef
 	// that apparently is backed by pixels that don't actually exist until they are queried.
@@ -200,30 +196,28 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 	// the window will have already gone flying off into the distance and we're left with a
 	// completely transparent image. That's no good.
 	//
-	// So here's a very nasty workaround. What we're doing is actually forcing the real pixels
+	// So here's a workaround. What we're doing is actually forcing the real pixels
 	// to get copied over from the WindowServer by actually drawing them into another context
 	// that has settings optimized for use with Core Animation. This isn't too wasteful, and it's
 	// far better than actually copying over all of the real pixel data.
-	CGSize imageSize = CGSizeMake(CGImageGetWidth(imageRef), CGImageGetHeight(imageRef));
-	CGContextRef context = CGBitmapContextCreate(NULL, imageSize.width, imageSize.height, 8, 0,
-												 [[NSColorSpace deviceRGBColorSpace] CGColorSpace], kCGBitmapByteOrder32Host | kCGImageAlphaPremultipliedFirst);
-    
-	[NSGraphicsContext saveGraphicsState];
-	[NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithGraphicsPort:context flipped:NO]];
-	NSImage *oldImage = [[NSImage alloc] initWithCGImage:imageRef size:CGSizeZero];
-	[oldImage drawInRect:NSMakeRect(0, 0, imageSize.width, imageSize.height) fromRect:NSZeroRect operation:NSCompositeCopy fraction:1.0];
-	[NSGraphicsContext restoreGraphicsState];
+	CGColorSpaceRef colorSpace = CGImageGetColorSpace(windowImageRef);
+	CGSize imageSize = CGSizeMake(CGImageGetWidth(windowImageRef), CGImageGetHeight(windowImageRef));
+	CGContextRef ctx = JNWCreateGraphicsContext(imageSize, colorSpace);
 	
-	CGImageRef copiedImageRef = CGBitmapContextCreateImage(context);
-	NSImage *image = [[NSImage alloc] initWithCGImage:copiedImageRef size:CGSizeZero];
+	// Draw the window image into the newly-created context.
+	CGContextDrawImage(ctx, (CGRect){ .size = imageSize }, windowImageRef);
 	
-	CGImageRelease(imageRef);
-	CGImageRelease(copiedImageRef);
-	CGContextRelease(context);
+	CGImageRef copiedWindowImageRef = CGBitmapContextCreateImage(ctx);
+	NSImage *image = [[NSImage alloc] initWithCGImage:copiedWindowImageRef size:imageSize];
+	
+	CGContextRelease(ctx);
+	CGImageRelease(windowImageRef);
+	CGImageRelease(copiedWindowImageRef);
 	
 	// If we weren't originally on the screen, there's a good chance we shouldn't be visible yet.
-	if (!onScreen || forceOffscreen)
+	if (!onScreen || forceOffscreen) {
 		self.alphaValue = 0.f;
+	}
 	
 	// If we moved the window offscreen to get the screenshot, we want to move back to the original frame.
 	if (!CGRectEqualToRect(originalWindowFrame, self.frame)) {
@@ -241,14 +235,23 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 	};
 }
 
+#pragma mark Graphics context creation
+
+CGContextRef JNWCreateGraphicsContext(CGSize size, CGColorSpaceRef colorSpace) {
+	size_t width = size.width;
+	size_t height = size.height;
+	size_t bitsPerComponent = 8;
+	size_t bytesPerRow = 4 * width;
+	CGBitmapInfo bitmapInfo = kCGBitmapByteOrder32Host | kCGImageAlphaPremultipliedFirst;
+	CGContextRef ctx = CGBitmapContextCreate(NULL, width, height, bitsPerComponent, bytesPerRow, colorSpace, bitmapInfo);
+	return ctx;
+}
 
 #pragma mark Window Overrides
 
 - (NSRect)constrainFrameRect:(NSRect)frameRect toScreen:(NSScreen *)screen {
 	return (_disableConstrainedWindow ? frameRect : [super constrainFrameRect:frameRect toScreen:screen]);
 }
-
-
 
 #pragma mark Convenince Window Methods
 
@@ -341,8 +344,6 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 - (void)animationDidStop:(CAAnimation *)anim finished:(BOOL)flag {
 	[self destroyTransformingWindowIfNeeded];
 }
-
-
 
 #pragma mark Lifecycle
 
