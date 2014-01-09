@@ -77,18 +77,20 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 }
 
 - (void)initializeFullScreenWindow {
-	self.fullScreenWindow = [[NSWindow alloc] initWithContentRect:self.screen.frame
+	self.fullScreenWindow = [[NSWindow alloc] initWithContentRect:(CGRect){ .size = self.screen.frame.size }
 														styleMask:NSBorderlessWindowMask
 														  backing:NSBackingStoreBuffered
-															defer:NO screen:self.screen];
+															defer:NO
+														   screen:self.screen];
+	
 	self.fullScreenWindow.animationBehavior = NSWindowAnimationBehaviorNone;
-	self.fullScreenWindow.backgroundColor = [NSColor clearColor];
+	self.fullScreenWindow.backgroundColor = NSColor.clearColor;
 	self.fullScreenWindow.movableByWindowBackground = NO;
 	self.fullScreenWindow.ignoresMouseEvents = YES;
 	self.fullScreenWindow.level = self.level;
 	self.fullScreenWindow.hasShadow = NO;
 	self.fullScreenWindow.opaque = NO;
-	self.fullScreenWindow.contentView = [[JNWAnimatableWindowContentView alloc] initWithFrame:[self.fullScreenWindow.contentView bounds]];
+	self.fullScreenWindow.contentView = [[JNWAnimatableWindowContentView alloc] initWithFrame:CGRectZero];
 }
 
 
@@ -101,13 +103,11 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 	return self.windowRepresentationLayer;
 }
 
-- (CGRect)bounds {
-	return (CGRect){ .size = self.frame.size };
-}
-
 - (CGRect)shadowRect {
-	CGRect rect = CGRectInset(self.bounds, -JNWAnimatableWindowShadowHorizontalOutset, 0);
+	CGRect windowBounds = (CGRect){ .size = self.frame.size };
+	CGRect rect = CGRectInset(windowBounds, -JNWAnimatableWindowShadowHorizontalOutset, 0);
 	rect.size.height += JNWAnimatableWindowShadowTopOffset;
+	
 	return rect;
 }
 
@@ -125,8 +125,9 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 	[self initializeFullScreenWindow];
 	[self initializeWindowRepresentationLayer];
 	
+	self.windowRepresentationLayer.frame = [self convertWindowFrameToScreenFrame:self.frame];
+	
 	[[self.fullScreenWindow.contentView layer] addSublayer:self.windowRepresentationLayer];
-	self.windowRepresentationLayer.frame = self.frame;
 
 	NSImage *image = [self imageRepresentationOffscreen:NO];
 	
@@ -232,6 +233,14 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 	return image;
 }
 
+- (CGRect)convertWindowFrameToScreenFrame:(CGRect)windowFrame {
+	return (CGRect) {
+		.size = windowFrame.size,
+		.origin.x = windowFrame.origin.x - self.screen.frame.origin.x,
+		.origin.y = windowFrame.origin.y - self.screen.frame.origin.y
+	};
+}
+
 
 #pragma mark Window Overrides
 
@@ -299,7 +308,7 @@ static const CGFloat JNWAnimatableWindowShadowTopOffset = 14.f;
 	
 	NSImage *finalState = [self imageRepresentationOffscreen:YES];
 	[self performAnimations:^(CALayer *layer) {
-		self.windowRepresentationLayer.frame = frameRect;
+		self.windowRepresentationLayer.frame = [self convertWindowFrameToScreenFrame:frameRect];
 		self.windowRepresentationLayer.contents = finalState;
 	} withDuration:duration timing:timing];
 }
