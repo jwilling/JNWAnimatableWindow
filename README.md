@@ -1,7 +1,7 @@
 ## JNWAnimatableWindow ##
 `JNWAnimatableWindow` is a `NSWindow` subclass that adds a `layer` property onto the window, allowing you to animate it as you wish.
 
-![](http://appjon.com/assets/github/JNWAnimatableWindow.gif)
+![](http://www.jwilling.com/serve/github/jnwanimatablewindow/preview.gif)
 
 ## Getting Started ##
 
