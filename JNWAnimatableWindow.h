@@ -18,12 +18,13 @@
 
 
 #import <Cocoa/Cocoa.h>
+#import <QuartzCore/QuartzCore.h>
 
 /// Allows for an extremely flexible manipulation of a static representation of the window.
 ///
 /// Since it uses a visual representation of the window, the window cannot be interacted with
 /// while a transform is applied, nor is it automatically updated to reflect the window's state.
-@interface JNWAnimatableWindow : NSWindow
+@interface JNWAnimatableWindow : NSWindow <CAAnimationDelegate>
 
 /// This layer can be transformed as much as desired. As soon as the property is first used an image
 /// representation of the current window's state will be grabbed and used for the layer's contents.

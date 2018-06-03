@@ -7,9 +7,10 @@
 //
 
 #import <Cocoa/Cocoa.h>
+#import <QuartzCore/QuartzCore.h>
 #import "JNWAnimatableWindow.h"
 
-@interface AppDelegate : NSObject <NSApplicationDelegate>
+@interface AppDelegate : NSObject <NSApplicationDelegate, CAAnimationDelegate>
 
 @property (assign) IBOutlet JNWAnimatableWindow *window;
 
