@@ -256,11 +256,24 @@ CGContextRef JNWCreateGraphicsContext(CGSize size, CGColorSpaceRef colorSpace) {
 #pragma mark Convenince Window Methods
 
 - (void)orderOutWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timing animations:(void (^)(CALayer *))animations {
+    
+    
+    // let setup finished then start animate
+    [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
+        [self setupIfNeeded];
+    } completionHandler:^{
+        // The fake window is in the exact same position as the real one, so we can safely order ourself out.
+        [super orderOut:nil];
+        [self performAnimations:animations withDuration:duration timing:timing];
+    }];
+    
+    /*
 	[self setupIfNeeded];
 	
 	// The fake window is in the exact same position as the real one, so we can safely order ourself out.
 	[super orderOut:nil];
 	[self performAnimations:animations withDuration:duration timing:timing];
+     */
 }
 
 - (void)orderOutWithAnimation:(CAAnimation *)animation {
@@ -272,6 +285,20 @@ CGContextRef JNWCreateGraphicsContext(CGSize size, CGColorSpaceRef colorSpace) {
 
 - (void)makeKeyAndOrderFrontWithDuration:(CFTimeInterval)duration timing:(CAMediaTimingFunction *)timing
 								   setup:(void (^)(CALayer *))setup animations:(void (^)(CALayer *))animations {
+    
+    // let setup finished then start animate
+    [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
+        [self setupIfNeededWithSetupBlock:setup];
+    } completionHandler:^{
+        // Avoid unnecessary layout passes if we're already visible when this method is called. This could take place if the window
+        // is still being animated out, but the user suddenly changes their mind and the window needs to come back on screen again.
+        if (!self.isVisible)
+            [super makeKeyAndOrderFront:nil];
+        
+        [self performAnimations:animations withDuration:duration timing:timing];
+    }];
+    
+    /*
 	[self setupIfNeededWithSetupBlock:setup];
 	
 	// Avoid unnecessary layout passes if we're already visible when this method is called. This could take place if the window
@@ -280,6 +307,7 @@ CGContextRef JNWCreateGraphicsContext(CGSize size, CGColorSpaceRef colorSpace) {
 		[super makeKeyAndOrderFront:nil];
 	
 	[self performAnimations:animations withDuration:duration timing:timing];
+     */
 }
 
 - (void)makeKeyAndOrderFrontWithAnimation:(CAAnimation *)animation initialOpacity:(CGFloat)opacity {
