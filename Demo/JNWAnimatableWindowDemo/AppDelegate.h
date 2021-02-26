@@ -6,8 +6,8 @@
 //  Copyright (c) 2013 AppJon. All rights reserved.
 //
 
-#import <Cocoa/Cocoa.h>
-#import <QuartzCore/QuartzCore.h>
+@import Cocoa;
+@import QuartzCore;
 #import "JNWAnimatableWindow.h"
 
 @interface AppDelegate : NSObject <NSApplicationDelegate, CAAnimationDelegate>

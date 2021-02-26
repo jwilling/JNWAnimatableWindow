@@ -7,7 +7,7 @@
 //
 
 #import "AppDelegate.h"
-#import <QuartzCore/QuartzCore.h>
+@import QuartzCore;
 
 @implementation AppDelegate
 

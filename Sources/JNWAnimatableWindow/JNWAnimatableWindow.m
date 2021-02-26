@@ -17,8 +17,8 @@
  */
 
 
-#import "JNWAnimatableWindow.h"
-#import <QuartzCore/QuartzCore.h>
+#import "include/JNWAnimatableWindow.h"
+@import QuartzCore;
 
 // Since we're using completion blocks to determine when to kill the extra window, we need
 // a way to keep track of the outstanding number of transactions, so we keep increment and

@@ -7,7 +7,7 @@ Pod::Spec.new do |s|
   s.author       = { "Jonathan Willing" => "hi@jwilling.com" }
   s.source       = { :git => "https://github.com/jwilling/JNWAnimatableWindow.git", :tag => s.version.to_s }
   s.platform     = :osx, '10.7'
-  s.source_files = 'JNWAnimatableWindow.{h,m}'
+  s.source_files = 'Sources/JNWAnimatableWindow/JNWAnimatableWindow.m', 'Sources/JNWAnimatableWindow/include/JNWAnimatableWindow.h'
 
   s.framework  = 'QuartzCore'
   s.requires_arc = true

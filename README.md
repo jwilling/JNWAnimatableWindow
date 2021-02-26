@@ -3,6 +3,30 @@
 
 ![](http://www.jwilling.com/serve/github/jnwanimatablewindow/preview.gif)
 
+## Installation ##
+
+### Swift Package Manager ###
+
+In Xcode 11 or later click `File` -> `Swift Packages` -> `Add Package Dependency...`.
+
+Enter the following URL:
+`https://github.com/jwilling/JNWAnimatableWindow.git`
+
+Then select the branch `master`.
+
+### CocoaPods ###
+
+Add `pod 'JNWAnimatableWindow', '~> 0.9'` to your Podfile similar to the following:
+
+```
+target 'MyApp' do
+  pod 'JNWAnimatableWindow', '~> 0.9'
+end
+```
+
+Then run a `pod install` inside your terminal, or from CocoaPods.app.
+
+
 ## Getting Started ##
 
 `JNWAnimatableWindow` has provides both a layer property and a set of order out & order front methods to simplify common animations. If you would like to animate the window manually and if the window is already visible, you can just manipulate the `layer` property on the window.
