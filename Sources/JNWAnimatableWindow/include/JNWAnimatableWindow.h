@@ -17,8 +17,8 @@
  */
 
 
-#import <Cocoa/Cocoa.h>
-#import <QuartzCore/QuartzCore.h>
+@import Cocoa;
+@import QuartzCore;
 
 /// Allows for an extremely flexible manipulation of a static representation of the window.
 ///
